@@ -38,7 +38,7 @@ github: https://github.com/myweishanli/yii2-ssdb
 ------------
 
 ```php
-**
+/**
  * This is the ActiveQuery class for [[\common\models\User]].
  *
  * @property string $user_id
