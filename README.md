@@ -3,7 +3,7 @@ Yii2 SSDB
 
 实现了 Active Record、Active Query
 
-github: https://github.com/myweishanli/yii2-extjs-rbac
+github: https://github.com/myweishanli/yii2-ssdb
 
 [![Latest Stable Version](https://poser.pugx.org/myweishanli/yii2-ssdb/v/stable.png)](https://packagist.org/packages/myweishanli/yii2-ssdb)
 [![Total Downloads](https://poser.pugx.org/myweishanli/yii2-ssdb/downloads.png)](https://packagist.org/packages/myweishanli/yii2-ssdb)
