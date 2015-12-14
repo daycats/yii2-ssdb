@@ -1,0 +1,14 @@
+{
+    "name": "myweishanli/yii2-ssdb",
+    "description": "Yii2 SSDB Active Record Active Query",
+    "type": "yii2-extension",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Shanli Wei",
+            "email": "myweishanli@gmail.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {}
+}
