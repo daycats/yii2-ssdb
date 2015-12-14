@@ -18,6 +18,24 @@ github: https://github.com/myweishanli/yii2-ssdb
 
 > 有任何疑问可以发邮件到 myweishanli@gmail.com
 
+
+安装
+------------
+
+安装这个扩展的首选方式是通过 [composer](http://getcomposer.org/download/).
+
+执行
+
+```
+composer require myweishanli/yii2-ssdb:dev-master
+```
+或添加
+
+```
+"myweishanli/yii2-ssdb": "dev-master"
+```
+
+
 配置
 ------------
 
