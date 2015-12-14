@@ -39,7 +39,7 @@ Yii2 SSDB
  * @property integer $age
  * @property integer $status
  */
-class SnsTestUser extends ActiveRecord
+class User extends ActiveRecord
 {
     public static $modelClass = '\common\models\User';
 }
@@ -85,7 +85,7 @@ $model = User::find()->andWhere(['user_id' => 1000000])->one();
 
 ### 获取一条数据 多条件查询
 
-```
+```php
 $model = User::find()->andWhere(['user_id' => 1000000, 'age' => 19])->one();
 ```
 
