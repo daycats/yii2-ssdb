@@ -72,7 +72,7 @@ class User extends \wsl\ssdb\ActiveRecord
 }
 ```
 
-排序列表
+查询示例
 ------------
 
 ```php
