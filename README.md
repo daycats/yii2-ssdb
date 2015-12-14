@@ -3,6 +3,8 @@ Yii2 SSDB
 
 实现了 Active Record、Active Query
 
+> Yii2 SSDB GII 扩展开发中...
+
 github: https://github.com/myweishanli/yii2-ssdb
 
 [![Latest Stable Version](https://poser.pugx.org/myweishanli/yii2-ssdb/v/stable.png)](https://packagist.org/packages/myweishanli/yii2-ssdb)
@@ -37,6 +39,7 @@ github: https://github.com/myweishanli/yii2-ssdb
 创建数据模型
 ------------
 
+`common/models/ssdb/User.php`
 ```php
 /**
  * This is the ActiveQuery class for [[\common\models\User]].
@@ -46,11 +49,47 @@ github: https://github.com/myweishanli/yii2-ssdb
  * @property integer $age
  * @property integer $status
  */
-class User extends ActiveRecord
+class User extends \wsl\ssdb\ActiveRecord
 {
     public static $modelClass = '\common\models\User';
+    
+     /**
+      * @inheritdoc
+      * @return UserQuery the active query used by this AR class.
+      */
+    public static function find()
+    {
+        return new SnsTestUserQuery(get_called_class());
+    }
+
 }
 ```
+
+`common/models/ssdb/UserQuery.php`
+
+```php
+class UserQuery extends \wsl\ssdb\ActiveQuery
+{
+    /**
+     * @inheritdoc
+     * @return User[]|array
+     */
+    public function all($db = null)
+    {
+        return parent::all($db);
+    }
+
+    /**
+     * @inheritdoc
+     * @return User|array|null
+     */
+    public function one($db = null)
+    {
+        return parent::one($db);
+    }
+}
+```
+
 
 Active Record、Active Query使用说明
 ------------
