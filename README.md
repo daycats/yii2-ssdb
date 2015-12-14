@@ -27,13 +27,31 @@ Yii2 SSDB
 ],
 ```
 
-使用说明
+创建数据模型
+------------
+
+```php
+**
+ * This is the ActiveQuery class for [[\common\models\User]].
+ *
+ * @property string $user_id
+ * @property string $name
+ * @property integer $age
+ * @property integer $status
+ */
+class SnsTestUser extends ActiveRecord
+{
+    public static $modelClass = '\common\models\User';
+}
+```
+
+Active Record、Active Query使用说明
 ------------
 
 ### 新增或者替换数据
 
 ```php
-$userModel = new SnsTestUser();
+$userModel = new User();
 $userModel->user_id = 1000000;
 $userModel->name = '张三';
 $userModel->age = 19;
@@ -44,62 +62,62 @@ $userModel->save();
 ### 获取一条数据
 
 ```php
-$model = SnsTestUser::find()->one();
+$model = User::find()->one();
 ```
 
 ### 获取一条数据 排序
 
 ```php
-$model = SnsTestUser::find()->orderBy('user_id asc')->one();
+$model = User::find()->orderBy('user_id asc')->one();
 ```
 
 ### 删除全部
 
 ```php
-SnsTestUser::deleteAll();
+User::deleteAll();
 ```
 
 ### 获取一条数据 条件查询
 
 ```php
-$model = SnsTestUser::find()->andWhere(['user_id' => 1000000])->one();
+$model = User::find()->andWhere(['user_id' => 1000000])->one();
 ```
 
 ### 获取一条数据 多条件查询
 
 ```
-$model = SnsTestUser::find()->andWhere(['user_id' => 1000000, 'age' => 19])->one();
+$model = User::find()->andWhere(['user_id' => 1000000, 'age' => 19])->one();
 ```
 
 ### 获取所有数据列表
 
 ```php
-$models = SnsTestUser::find()->all();
+$models = User::find()->all();
 ```
 
 ### 获取所有数据列表 排序
 
 ```php
-$models = SnsTestUser::find()->orderBy('age desc')->all();
+$models = User::find()->orderBy('age desc')->all();
 ```
 
 ### 获取所有数据列表 条件查询
 
 ```php
-$models = SnsTestUser::find()->andWhere(['user_id' => 1000001])->all();
+$models = User::find()->andWhere(['user_id' => 1000001])->all();
 ```
 
 ### 分页数据列表
 
 ```php
-$models = SnsTestUser::find()->offset(1)->limit(1)->all();
+$models = User::find()->offset(1)->limit(1)->all();
 ```
 
 ### 使用`DataProvider`
 
 ```php
 $dataProvider = new ActiveDataProvider([
-    'query' => SnsTestUser::find(),
+    'query' => User::find(),
      'pagination' => [
          'pageSize' => 20,
      ],
