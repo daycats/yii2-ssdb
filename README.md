@@ -138,3 +138,7 @@ foreach ($dataProvider->getModels() as $itemModel) {
 }
 ```
 
+更多应用 
+------------
+
+- [自定义排序规则](docs/custom-sorting.md)
