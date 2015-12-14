@@ -13,8 +13,8 @@ use Yii;
 use yii\base\InvalidConfigException;
 use yii\base\NotSupportedException;
 use yii\db\BaseActiveRecord;
-use yii\db\StaleObjectException;
 use yii\db\TableSchema;
+use yii\helpers\ArrayHelper;
 use yii\helpers\Inflector;
 use yii\helpers\StringHelper;
 
@@ -24,6 +24,10 @@ class ActiveRecord extends BaseActiveRecord
      * @var string Model Class
      */
     public static $modelClass;
+    /**
+     * @var array 排序字段
+     */
+    public static $sortFields;
 
     /**
      * Loads default values from database table schema
@@ -214,6 +218,16 @@ class ActiveRecord extends BaseActiveRecord
 //    }
 
     /**
+     * 排序规则
+     *
+     * @return array
+     */
+    public function sortRules()
+    {
+        return [];
+    }
+
+    /**
      * @inheritdoc
      */
     public function insert($runValidation = true, $attributes = null)
@@ -226,30 +240,56 @@ class ActiveRecord extends BaseActiveRecord
         }
         $db = static::getDb();
         $values = $this->getDirtyAttributes($attributes);
+        $keyPrefix = static::keyPrefix();
         $pk = [];
         foreach ($this->primaryKey() as $key) {
             $pk[$key] = $values[$key] = $this->getAttribute($key);
             if ($pk[$key] === null) {
                 // use auto increment if pk is null
-                $pk[$key] = $values[$key] = $db->incr(static::keyPrefix() . ':s:' . $key);
+                $pk[$key] = $values[$key] = $db->incr($keyPrefix . ':s:' . $key);
                 $this->setAttribute($key, $values[$key]);
             } elseif (is_numeric($pk[$key])) {
                 // if pk is numeric update auto increment value
-                $currentPk = $db->get(static::keyPrefix() . ':s:' . $key);
+                $currentPk = $db->get($keyPrefix . ':s:' . $key);
                 if ($pk[$key] > $currentPk) {
-                    $db->set(static::keyPrefix() . ':s:' . $key, $pk[$key]);
+                    $db->set($keyPrefix . ':s:' . $key, $pk[$key]);
                 }
             }
         }
+
         // save pk in a find all pool
-        $db->zset(static::keyPrefix(), static::buildKey($pk), static::buildKey($pk));
-        $key = static::keyPrefix() . ':a:' . static::buildKey($pk);
+        $key = $keyPrefix . ':a:' . static::buildKey($pk);
+        $db->zset($keyPrefix, $key, ArrayHelper::getValue(array_values($pk), 0));
+
+        // 自定义排序规则索引
+        foreach ($this->sortRules() as $rule) {
+            $index = ArrayHelper::getValue($rule, 'index');
+            $weight = ArrayHelper::getValue($rule, 'weight', time());
+            $isValid = ArrayHelper::getValue($rule, 'isValid', true);
+            if (is_callable($isValid)) {
+                $isValid = call_user_func($isValid);
+            }
+            if ($isValid) {
+                if (is_callable($index)) {
+                    $index = call_user_func($index);
+                }
+                if (is_callable($weight)) {
+                    $weight = call_user_func($weight);
+                }
+                $indexes = is_array($index) ? $index : [$index];
+                foreach ($indexes as $indexName) {
+                    $indexName = $keyPrefix . ':f:' . $indexName;
+                    $db->zset($indexName, $key, $weight);
+                    $db->hset($keyPrefix . ':index', $indexName, time());
+                }
+            }
+        }
+
         // save attributes
         foreach ($values as $attribute => $value) {
             if (is_bool($value)) {
-                $value = (int) $value;
+                $value = (int)$value;
             }
-            var_dump($attribute);
             $db->hset($key, $attribute, $value);
         }
         $changedAttributes = array_fill_keys(array_keys($values), null);
@@ -280,15 +320,39 @@ class ActiveRecord extends BaseActiveRecord
         }
         $db = static::getDb();
         $attributeKeys = [];
-        $db->multi();
-        foreach ($pks as $pk) {
-            $pk = static::buildKey($pk);
-            $db->zclear(static::keyPrefix());
-            $attributeKeys[] = static::keyPrefix() . ':a:' . $pk;
+        $keyPrefix = static::keyPrefix();
+
+        $indexKey = $keyPrefix . ':index';
+        $indexes = $db->hgetall($indexKey);
+        if (is_null($condition)) {
+            foreach ($indexes as $key => $timestamp) {
+                $db->zclear($key);
+            }
+            $db->hclear($indexKey);
         }
-        $db->del($attributeKeys);
-        $result = $db->exec();
-        return end($result);
+        $num = 0;
+        foreach ($pks as $pk) {
+            $num++;
+            $pkv = $keyPrefix . ':a:' .static::buildKey($pk);
+            // 删除各个排序列表的索引
+            if (!is_null($condition)) {
+                $db->zdel($keyPrefix, $pkv);
+                foreach ($indexes as $key => $time) {
+                    $db->zdel($key, $pkv);
+                }
+            }
+
+            $attributeKeys[] = $pkv;
+            if (count($attributeKeys) > 1000) {
+                $db->hclear($attributeKeys);
+            }
+        }
+        $db->hclear($attributeKeys);
+        if (is_null($condition)) {
+            $db->zclear($keyPrefix);
+        }
+
+        return true;
     }
 
     private static function fetchPks($condition)
@@ -306,5 +370,96 @@ class ActiveRecord extends BaseActiveRecord
             $pks[] = $pk;
         }
         return $pks;
+    }
+
+    /**
+     * 获取字符的各种组合
+     * 二位数组为限制自身数组下标允许改变的字符
+     *
+     * 示例:
+     * ```php
+     * $array = [
+     *     [1, 'all'],
+     *     [2, 'all'],
+     *     [3, 'all'],
+     * ];
+     * comb($array);
+     * print_r(comb($array, '_'));
+     *
+     * // 输出内容:
+     * // Array
+     * //  (
+     * //      [0] => 1_2_3
+     * //      [1] => 1_2_all
+     * //      [2] => 1_all_3
+     * //      [3] => 1_all_all
+     * //      [4] => all_2_3
+     * //      [5] => all_2_all
+     * //      [6] => all_all_3
+     * //      [7] => all_all_all
+     * //  )
+     * ```
+     *
+     * @param array $array 需要组合的数组
+     * @param bool $isAddAll 添加all字符
+     * @param string|null $delimiter 分隔符 默认不分割返回数组
+     * @param string|null $prefix 前缀
+     * @return array
+     */
+    public static function comb(array $array, $isAddAll = true, $delimiter = '_', $prefix = null)
+    {
+        $count = 1;
+        if ($isAddAll) {
+            foreach ($array as &$_item) {
+                if (!is_array($_item)) {
+                    $_item = ['all', $_item];
+                }
+            }
+        }
+        foreach ($array as $item) {
+            $count *= count($item);
+        }
+
+        $data = [];
+        $repeatCount = $count;
+        foreach ($array as $i => $values) {
+            $data[$i] = [];
+            $startIndex = 0;
+            $fillCount = 0;
+            $repeatCount = $repeatCount / count($values);
+            do {
+                foreach ($values as $j => $item) {
+                    $data[$i] = array_merge($data[$i], array_fill($startIndex, $repeatCount, $item));
+                    $startIndex += $repeatCount;
+                    $fillCount += $repeatCount;
+                }
+            } while ($fillCount < $count);
+        }
+
+        $newData = [];
+        foreach ($data as $i => $item) {
+            foreach ($item as $k => $value) {
+                if (is_null($delimiter) && !is_null($prefix) && 0 == $i) {
+                    $newData[$k][] = $prefix . $value;
+                    continue;
+                }
+                $newData[$k][] = $value;
+            }
+        }
+
+        if (is_null($delimiter)) {
+            return $newData;
+        } else {
+            $strings = [];
+            foreach ($newData as $indexName) {
+                if (is_null($prefix)) {
+                    $strings[] = join($delimiter, $indexName);
+                } else {
+                    $strings[] = $prefix . join($delimiter, $indexName);
+                }
+            }
+
+            return $strings;
+        }
     }
 }

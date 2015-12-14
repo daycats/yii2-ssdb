@@ -18,6 +18,7 @@ use yii\db\ActiveQueryTrait;
 use yii\db\ActiveRecordInterface;
 use yii\db\ActiveRelationTrait;
 use yii\db\QueryTrait;
+use yii\helpers\ArrayHelper;
 
 class ActiveQuery extends Component implements ActiveQueryInterface
 {
@@ -305,9 +306,9 @@ class ActiveQuery extends Component implements ActiveQueryInterface
         if ($this->orderBy) {
             foreach ($this->orderBy as $field => $sort) {
                 if (SORT_ASC === $sort) {
-                    $pks = $db->zrange($keyPrefix, $offset, $limit);
-                } elseif(SORT_DESC === $sort) {
-                    $pks = $db->zrrange($keyPrefix, $offset, $limit);
+                    $pks = $db->zrange($keyPrefix . ':f:' . $field, $offset, $limit);
+                } elseif (SORT_DESC === $sort) {
+                    $pks = $db->zrrange($keyPrefix . ':f:' . $field, $offset, $limit);
                 }
                 break;
             }
@@ -315,8 +316,8 @@ class ActiveQuery extends Component implements ActiveQueryInterface
             $pks = $db->zrange($keyPrefix, $offset, $limit);
         }
         if ($pks) {
-            foreach ($pks as $key => $scope) {
-                $rows[] = $db->hgetall($key);
+            foreach ($pks as $pk => $scope) {
+                $rows[] = $db->hgetall($pk);
             }
         }
 
@@ -339,7 +340,7 @@ class ActiveQuery extends Component implements ActiveQueryInterface
             foreach ($this->orderBy as $field => $sort) {
                 if (SORT_ASC === $sort) {
                     $pks = $db->zrange($keyPrefix, 0, 1);
-                } elseif(SORT_DESC === $sort) {
+                } elseif (SORT_DESC === $sort) {
                     $pks = $db->zrrange($keyPrefix, 0, 1);
                 }
                 break;
@@ -476,6 +477,32 @@ class ActiveQuery extends Component implements ActiveQueryInterface
                 return $max;
         }
         throw new InvalidParamException('Unknown fetch type: ' . $type);
+    }
+
+    /**
+     * 排序参数
+     *
+     * @param string $fieldName 排序字段名
+     * @param array $params 参数
+     * @param int $sort 排序类型
+     * @return $this
+     */
+    public function orderParams($fieldName, $params, $sort = SORT_ASC)
+    {
+        /* @var $modelClass ActiveRecord */
+        $modelClass = $this->modelClass;
+        $fields = ArrayHelper::getValue($modelClass::$sortFields, $fieldName);
+        if (is_null($fields)) {
+            throw new InvalidParamException('Unknown sort field name: ' . $fieldName);
+        }
+        foreach ($fields as $field) {
+            if (!isset($params[$field])) {
+                $params[$field] = 'all';
+            }
+        }
+        $this->addOrderBy(strtr(join('_', $fields), $params) . ' ' . $sort);
+
+        return $this;
     }
 
 }

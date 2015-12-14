@@ -52,41 +52,6 @@ github: https://github.com/myweishanli/yii2-ssdb
 class User extends \wsl\ssdb\ActiveRecord
 {
     public static $modelClass = '\common\models\User';
-    
-     /**
-      * @inheritdoc
-      * @return UserQuery the active query used by this AR class.
-      */
-    public static function find()
-    {
-        return new SnsTestUserQuery(get_called_class());
-    }
-
-}
-```
-
-`common/models/ssdb/UserQuery.php`
-
-```php
-class UserQuery extends \wsl\ssdb\ActiveQuery
-{
-    /**
-     * @inheritdoc
-     * @return User[]|array
-     */
-    public function all($db = null)
-    {
-        return parent::all($db);
-    }
-
-    /**
-     * @inheritdoc
-     * @return User|array|null
-     */
-    public function one($db = null)
-    {
-        return parent::one($db);
-    }
 }
 ```
 
