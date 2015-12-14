@@ -111,7 +111,7 @@ $models = User::find()->orderBy('age desc')->all();
 ### 获取所有数据列表 条件查询
 
 ```php
-$models = User::find()->andWhere(['user_id' => 1000001])->all();
+$models = User::find()->andWhere(['user_id' => 1000000])->all();
 ```
 
 ### 分页数据列表
