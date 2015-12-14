@@ -8,17 +8,13 @@ Yii2 SSDB
 配置
 ------------
 
-`@app/config/main.php`
+高级版是`common/config/main-local.php`
 
-`@app`指你应用的目录 比如你访问的是`backend/web/index.php`那么你就配置`backend/config/main.php`即可
-反之你访问的是`frontend/web/index.php`那么你就配置`frontend/config/main.php`即可
-
-高级版是`main.php`
-
-基础版是`web.php`
+基础版是`config/web.php`
 
 ```php
 'components' => [
+    // ...
     'ssdb' => [
         'class' => 'wsl\ssdb\Connection',
         'host' => 'localhost',
