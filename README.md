@@ -59,6 +59,8 @@ class User extends \wsl\ssdb\ActiveRecord
 Active Record、Active Query使用说明
 ------------
 
+> 默认只能使用单个主键排序 更多排序查询[自定义排序规则](docs/custom-sorting.md)
+
 ### 新增或者替换数据
 
 ```php
