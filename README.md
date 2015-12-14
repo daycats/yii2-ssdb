@@ -42,7 +42,7 @@ github: https://github.com/myweishanli/yii2-ssdb
 `common/models/ssdb/User.php`
 ```php
 /**
- * This is the ActiveQuery class for [[\common\models\User]].
+ * This is the ActiveRecord class for [[\common\models\User]].
  *
  * @property string $user_id
  * @property string $name
