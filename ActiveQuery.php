@@ -217,10 +217,10 @@ class ActiveQuery extends Component implements ActiveQueryInterface
      */
     public function count($q = '*', $db = null)
     {
-        if ($this->where === null) {
+        if (null === $this->orderBy) {
             /* @var $modelClass ActiveRecord */
             $modelClass = $this->modelClass;
-            if ($db === null) {
+            if (null === $db) {
                 $db = $modelClass::getDb();
             }
             return $db->zsize($modelClass::keyPrefix());
@@ -358,6 +358,33 @@ class ActiveQuery extends Component implements ActiveQueryInterface
         }
 
         return $row;
+    }
+
+    /**
+     * 所有数据
+     *
+     * @param ActiveRecord $modelClass
+     * @param \wsl\ssdb\Connection $db
+     * @return mixed
+     */
+    protected function buildCount($modelClass, $db)
+    {
+        $count = 0;
+        $keyPrefix = $modelClass::keyPrefix();
+        if ($this->orderBy) {
+            foreach ($this->orderBy as $field => $sort) {
+                if (SORT_ASC === $sort) {
+                    $count = $db->zsize($keyPrefix . ':f:' . $field);
+                } elseif (SORT_DESC === $sort) {
+                    $count = $db->zsize($keyPrefix . ':f:' . $field);
+                }
+                break;
+            }
+        } else {
+            $count = $db->zsize($keyPrefix);
+        }
+
+        return $count;
     }
 
     /**
@@ -500,7 +527,7 @@ class ActiveQuery extends Component implements ActiveQueryInterface
                 $params[$field] = 'all';
             }
         }
-        $this->addOrderBy(strtr(join('_', $fields), $params) . ' ' . $sort);
+        $this->orderBy(strtr(join('_', $fields), $params) . ' ' . $sort);
 
         return $this;
     }
