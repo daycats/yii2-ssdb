@@ -256,7 +256,6 @@ class ActiveRecord extends BaseActiveRecord
                 }
             }
         }
-
         // save pk in a find all pool
         $key = $keyPrefix . ':a:' . static::buildKey($pk);
         $db->zset($keyPrefix, $key, ArrayHelper::getValue(array_values($pk), 0));
@@ -345,6 +344,7 @@ class ActiveRecord extends BaseActiveRecord
             $attributeKeys[] = $pkv;
             if (count($attributeKeys) > 1000) {
                 $db->hclear($attributeKeys);
+                $attributeKeys = [];
             }
         }
         $db->hclear($attributeKeys);
@@ -378,13 +378,8 @@ class ActiveRecord extends BaseActiveRecord
      *
      * 示例:
      * ```php
-     * $array = [
-     *     [1, 'all'],
-     *     [2, 'all'],
-     *     [3, 'all'],
-     * ];
-     * comb($array);
-     * print_r(comb($array, '_'));
+     * $array = [1, 2, 3];
+     * print_r(comb($array));
      *
      * // 输出内容:
      * // Array
