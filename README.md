@@ -138,7 +138,7 @@ $models = User::find()->orderBy('age desc')->all();
 $models = User::find()->andWhere(['user_id' => 1000000])->all();
 ```
 
-### 分页数据列表
+### 偏移数据和限定数据返回条数
 
 ```php
 $models = User::find()->offset(1)->limit(1)->all();
