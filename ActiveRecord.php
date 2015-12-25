@@ -228,6 +228,53 @@ class ActiveRecord extends BaseActiveRecord
     }
 
     /**
+     * Save data key
+     *
+     * @return string
+     */
+    public function getKey()
+    {
+        return static::keyPrefix() . ':a:' . static::buildKey($this->primaryKey);
+    }
+
+    /**
+     * Get index names
+     *
+     * @return array
+     */
+    public function getIndexs()
+    {
+        $indexes = [];
+        $keyPrefix = static::keyPrefix();
+        foreach ($this->sortRules() as $rule) {
+            $index = ArrayHelper::getValue($rule, 'index');
+            $weight = ArrayHelper::getValue($rule, 'weight', time());
+            $isValid = ArrayHelper::getValue($rule, 'isValid', true);
+            if (is_callable($isValid)) {
+                $isValid = call_user_func($isValid);
+            }
+            if ($isValid) {
+                if (is_callable($index)) {
+                    $index = call_user_func($index);
+                }
+                if (is_callable($weight)) {
+                    $weight = call_user_func($weight);
+                }
+                $names = is_array($index) ? $index : [$index];
+                foreach ($names as &$indexName) {
+                    $indexes[] = [
+                        'index' => $keyPrefix . ':f:' . $indexName,
+                        'weight' => $weight,
+                        'isValid' => $isValid,
+                    ];
+                }
+            }
+        }
+
+        return $indexes;
+    }
+
+    /**
      * @inheritdoc
      */
     public function insert($runValidation = true, $attributes = null)
@@ -257,31 +304,12 @@ class ActiveRecord extends BaseActiveRecord
             }
         }
         // save pk in a find all pool
-        $key = $keyPrefix . ':a:' . static::buildKey($pk);
+        $key = $this->getKey();
         $db->zset($keyPrefix, $key, ArrayHelper::getValue(array_values($pk), 0));
 
-        // 自定义排序规则索引
-        foreach ($this->sortRules() as $rule) {
-            $index = ArrayHelper::getValue($rule, 'index');
-            $weight = ArrayHelper::getValue($rule, 'weight', time());
-            $isValid = ArrayHelper::getValue($rule, 'isValid', true);
-            if (is_callable($isValid)) {
-                $isValid = call_user_func($isValid);
-            }
-            if ($isValid) {
-                if (is_callable($index)) {
-                    $index = call_user_func($index);
-                }
-                if (is_callable($weight)) {
-                    $weight = call_user_func($weight);
-                }
-                $indexes = is_array($index) ? $index : [$index];
-                foreach ($indexes as $indexName) {
-                    $indexName = $keyPrefix . ':f:' . $indexName;
-                    $db->zset($indexName, $key, $weight);
-                    $db->hset($keyPrefix . ':index', $indexName, time());
-                }
-            }
+        foreach ($this->getIndexs() as $indexData) {
+            $db->zset($indexData['index'], $key, $indexData['weight']);
+            $db->hset($keyPrefix . ':index', $indexData['index'], time());
         }
 
         // save attributes
@@ -313,43 +341,41 @@ class ActiveRecord extends BaseActiveRecord
      */
     public static function deleteAll($condition = null)
     {
-        $pks = self::fetchPks($condition);
-        if (empty($pks)) {
+        $records = self::fetchPks($condition);
+        if (empty($records)) {
             return 0;
         }
         $db = static::getDb();
-        $attributeKeys = [];
         $keyPrefix = static::keyPrefix();
 
-        $indexKey = $keyPrefix . ':index';
-        $indexes = $db->hgetall($indexKey);
         if (is_null($condition)) {
+            $attributeKeys = [];
+            $indexKey = $keyPrefix . ':index';
+            $indexes = $db->hgetall($indexKey);
             foreach ($indexes as $key => $timestamp) {
                 $db->zclear($key);
             }
             $db->hclear($indexKey);
-        }
-        $num = 0;
-        foreach ($pks as $pk) {
-            $num++;
-            $pkv = $keyPrefix . ':a:' .static::buildKey($pk);
-            // 删除各个排序列表的索引
-            if (!is_null($condition)) {
-                $db->zdel($keyPrefix, $pkv);
-                foreach ($indexes as $key => $time) {
-                    $db->zdel($key, $pkv);
+
+            foreach ($records as $record) {
+                $pkv = $keyPrefix . ':a:' . static::buildKey($record->primaryKey);
+                $attributeKeys[] = $pkv;
+                if (count($attributeKeys) > 1000) {
+                    $db->hclear($attributeKeys);
+                    $attributeKeys = [];
                 }
             }
-
-            $attributeKeys[] = $pkv;
-            if (count($attributeKeys) > 1000) {
-                $db->hclear($attributeKeys);
-                $attributeKeys = [];
-            }
-        }
-        $db->hclear($attributeKeys);
-        if (is_null($condition)) {
+            $db->hclear($attributeKeys);
             $db->zclear($keyPrefix);
+        } else {
+            // 删除数据对应的索引列表数据
+            foreach ($records as $record) {
+                if (!is_null($condition)) {
+                    foreach ($record->getIndexs() as $indexData) {
+                        $db->zdel($indexData['index'], $record->getKey());
+                    }
+                }
+            }
         }
 
         return true;
@@ -359,17 +385,7 @@ class ActiveRecord extends BaseActiveRecord
     {
         $query = static::find();
         $query->where($condition);
-        $records = $query->all(); // TODO limit fetched columns to pk
-        $primaryKey = static::primaryKey();
-        $pks = [];
-        foreach ($records as $record) {
-            $pk = [];
-            foreach ($primaryKey as $key) {
-                $pk[$key] = $record[$key];
-            }
-            $pks[] = $pk;
-        }
-        return $pks;
+        return $query->all();
     }
 
     /**
