@@ -151,9 +151,9 @@ $models = User::find()->offset(1)->limit(1)->all();
 ```php
 $dataProvider = new ActiveDataProvider([
     'query' => User::find(),
-     'pagination' => [
-         'pageSize' => 20,
-     ],
+    'pagination' => [
+        'pageSize' => 20,
+    ],
 ]);
 foreach ($dataProvider->getModels() as $itemModel) {
     // code...
